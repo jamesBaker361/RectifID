@@ -26,17 +26,17 @@ from transformers.utils.constants import OPENAI_CLIP_MEAN, OPENAI_CLIP_STD
 
 
 class ObjectRFlow:
-    def __init__(self, model, seed, device):
+    def __init__(self, model, seed, device,torch_dtype,size):
         self.seed = seed
         self.device = device
 
         if model == '2RFlow':
-            self.pipe = RectifiedFlowPipeline.from_pretrained("XCLIU/2_rectified_flow_from_sd_1_5", safety_checker=None, torch_dtype=torch.float16)
+            self.pipe = RectifiedFlowPipeline.from_pretrained("XCLIU/2_rectified_flow_from_sd_1_5", safety_checker=None, torch_dtype=torch_dtype)
             get_dW_and_merge(self.pipe, lora_path="Lykon/dreamshaper-7", save_dW=False, alpha=1.0)
             self.guidance_scale = 1.5
         elif 'PeRFlow' in model:
             # the paper only uses SD 1.5 while it also supports SD 2.1
-            self.pipe = StableDiffusionPipeline.from_pretrained("hansyan/perflow-sd15-dreamshaper", safety_checker=None, torch_dtype=torch.float16)
+            self.pipe = StableDiffusionPipeline.from_pretrained("hansyan/perflow-sd15-dreamshaper", safety_checker=None, torch_dtype=torch_dtype)
             self.pipe.scheduler = PeRFlowScheduler.from_config(self.pipe.scheduler.config, prediction_type="diff_eps", num_time_windows=4)
             # self.pipe = StableDiffusionPipeline.from_pretrained("hansyan/perflow-sd21-artius", safety_checker=None, torch_dtype=torch.float16)
             # self.pipe.scheduler = PeRFlowScheduler.from_config(self.pipe.scheduler.config, prediction_type="velocity", num_time_windows=4)
@@ -44,7 +44,7 @@ class ObjectRFlow:
             # self.guidance_scale = 4.5
         else:
             raise Exception('RFlow type %s not implemented' % model)
-        self.size = 512
+        self.size = size
         # self.size = 768
         
         # if model == 'PeRFlow-IPAdapter':
@@ -57,17 +57,17 @@ class ObjectRFlow:
             for param in module.parameters():
                 param.requires_grad = False
 
-        self.pipe.to("cuda")
+        self.pipe.to(device)
         self.pipe.set_progress_bar_config(disable=True)
         self._forward = self.pipe.__call__.__wrapped__
 
         self.detector_processor = OwlViTProcessor.from_pretrained('google/owlvit-base-patch32')
         self.detector_processor2 = AutoProcessor.from_pretrained('google/owlvit-base-patch32')
-        self.detector = OwlViTForObjectDetection.from_pretrained('google/owlvit-base-patch32').to('cuda')
+        self.detector = OwlViTForObjectDetection.from_pretrained('google/owlvit-base-patch32').to(device)
         self.processor = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
-        self.model = AutoModel.from_pretrained('facebook/dinov2-base').to('cuda')
-        self.OPENAI_CLIP_MEAN = torch.tensor(OPENAI_CLIP_MEAN).to('cuda')
-        self.OPENAI_CLIP_STD = torch.tensor(OPENAI_CLIP_STD).to('cuda')
+        self.model = AutoModel.from_pretrained('facebook/dinov2-base').to(device)
+        self.OPENAI_CLIP_MEAN = torch.tensor(OPENAI_CLIP_MEAN).to(device)
+        self.OPENAI_CLIP_STD = torch.tensor(OPENAI_CLIP_STD).to(device)
         for param in self.model.parameters():
             param.requires_grad_(False)
     
@@ -89,7 +89,7 @@ class ObjectRFlow:
 
         with torch.no_grad():
             ref_image_detector_processed = self.detector_processor(text=ref_text, images=ref_image, return_tensors="pt")
-            ref_image_detector_processed = {a: x.to('cuda') for a, x in ref_image_detector_processed.items()}
+            ref_image_detector_processed = {a: x.to(self.device) for a, x in ref_image_detector_processed.items()}
             detector_outputs = self.detector(**ref_image_detector_processed)
             target_sizes = torch.Tensor([ref_image.size[::-1]])
             results = self.detector_processor.post_process_object_detection(outputs=detector_outputs, target_sizes=target_sizes)
@@ -98,7 +98,7 @@ class ObjectRFlow:
                 self.ref_image_cropped = ref_image.crop(box)
             else:
                 self.ref_image_cropped = ref_image
-            ref_image_processed = self.processor(images=self.ref_image_cropped, return_tensors="pt")['pixel_values'].to('cuda')
+            ref_image_processed = self.processor(images=self.ref_image_cropped, return_tensors="pt")['pixel_values'].to(self.device)
             self.ref_embedding = self.model(ref_image_processed)[0][:, 0]
             self.cropped_image = np.array(ref_image)
     
@@ -110,7 +110,7 @@ class ObjectRFlow:
             return self._forward(self.pipe, prompt=prompt, height=self.size, width=self.size, ip_adapter_image=self.cropped_image, num_inference_steps=num_steps,
                 guidance_scale=self.guidance_scale, latents=latents0, output_type='pt', return_dict=False, callback_on_step_end=callback)[0][0]
     
-    def generate(self, prompt, seed, out, num_iterations=50, num_steps=4, verbose=True, guidance=1.):
+    def generate(self, prompt, seed, out, num_iterations=50, num_steps=4, verbose=True, guidance=1.)->Image.Image:
         generator = torch.manual_seed(seed)
         latent_size = int(self.size // 8)
         latents = nn.Parameter(randn_tensor((num_steps, 4, latent_size, latent_size), generator=generator, device=self.pipe._execution_device, dtype=self.pipe.text_encoder.dtype))
@@ -149,7 +149,7 @@ class ObjectRFlow:
             
             with torch.no_grad():
                 image_detector_processed = self.detector_processor2(images=(image * 255).int(), query_images=self.ref_image_cropped, return_tensors="pt")
-                image_detector_processed = {a: x.to('cuda') for a, x in image_detector_processed.items()}
+                image_detector_processed = {a: x.to(self.device) for a, x in image_detector_processed.items()}
                 detector_outputs = self.detector.image_guided_detection(**image_detector_processed)
                 target_sizes = torch.Tensor([image.shape[1:]])
                 results = self.detector_processor2.post_process_image_guided_detection(outputs=detector_outputs, target_sizes=target_sizes)
@@ -163,7 +163,7 @@ class ObjectRFlow:
             image_processed = (F.interpolate(image_cropped.unsqueeze(0), (224, 224)) - self.OPENAI_CLIP_MEAN[..., np.newaxis, np.newaxis]) / self.OPENAI_CLIP_STD[..., np.newaxis, np.newaxis]
             embedding = self.model(image_processed)[0][:, 0]
             loss1 = (1 - F.cosine_similarity(embedding, self.ref_embedding)) * 100
-            loss2 = F.l1_loss(F.interpolate(image_cropped.unsqueeze(0), (224, 224)), F.interpolate(TF.to_tensor(self.ref_image_cropped).half().to('cuda').unsqueeze(0), (224, 224))) * 1000  # optional for object
+            loss2 = F.l1_loss(F.interpolate(image_cropped.unsqueeze(0), (224, 224)), F.interpolate(TF.to_tensor(self.ref_image_cropped).half().to(self.device).unsqueeze(0), (224, 224))) * 1000  # optional for object
             loss = loss1 + loss2  # for object
             # loss = loss1 + loss2 * 0  # for live subject
 
@@ -176,8 +176,7 @@ class ObjectRFlow:
 
         with torch.no_grad():
             image = self.forward(prompt=prompt, num_steps=num_steps, latents0=latents0, callback=callback)
-        os.makedirs(osp.dirname(out), exist_ok=True)
-        plt.imsave(out, np.array(image.permute(1, 2, 0).cpu() * 255, dtype=np.uint8))
+        return Image.fromarray(np.array(image.permute(1, 2, 0).cpu() * 255, dtype=np.uint8))
     
     def generate_multi_prompt(self, prompts, outs, num_iterations=50, num_steps=4, guidance=1.):
         for prompt, out in zip(prompts, outs):

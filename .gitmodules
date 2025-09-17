@@ -4,3 +4,6 @@
 [submodule "piecewise_rectified_flow"]
 	path = piecewise_rectified_flow
 	url = https://github.com/magic-research/piecewise-rectified-flow.git
+[submodule "style_rl"]
+	path = style_rl
+	url = https://github.com/jamesBaker361/style-rl.git
