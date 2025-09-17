@@ -7,6 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 from PIL import Image
+from typing import Union
 import random
 
 import torch
@@ -79,8 +80,12 @@ class ObjectRFlow:
     #     self.pipe.unload_ip_adapter()
     #     self.ipadapter = False
 
-    def prepare(self, ref, ref_text):
-        ref_image = Image.open(ref).convert("RGB")
+    def prepare(self, ref:Union[str,Image.Image], ref_text):
+
+        if type(ref)==str:
+            ref_image = Image.open(ref).convert("RGB")
+        else:
+            ref_image=ref
 
         with torch.no_grad():
             ref_image_detector_processed = self.detector_processor(text=ref_text, images=ref_image, return_tensors="pt")

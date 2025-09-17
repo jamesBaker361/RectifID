@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import torchvision.transforms.functional as TF
 
 from diffusers import StableDiffusionPipeline, StableDiffusionXLPipeline
+from typing import Union
 from diffusers.utils.torch_utils import randn_tensor
 from piecewise_rectified_flow.src.scheduler_perflow import PeRFlowScheduler
 from InstaFlow.code.pipeline_rf import RectifiedFlowPipeline
@@ -84,8 +85,11 @@ class PersonRFlow:
     #     self.pipe.unload_ip_adapter()
     #     self.ipadapter = False
 
-    def prepare(self, ref):
-        ref_image = Image.open(ref).convert("RGB")
+    def prepare(self, ref:Union[str,Image.Image]):
+        if type(ref)==str:
+            ref_image = Image.open(ref).convert("RGB")
+        else:
+            ref_image=ref
 
         with torch.no_grad():
             det_thresh_backup = self.detector.det_thresh
