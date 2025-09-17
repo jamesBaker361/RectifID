@@ -9,11 +9,11 @@ from single_object import ObjectRFlow
 from single_person import PersonRFlow
 import wandb
 from transformers import AutoProcessor, CLIPModel
-import ImageReward as RM
+#import ImageReward as RM
 from style_rl.image_utils import concat_images_horizontally
 from style_rl.eval_helpers import DinoMetric
 from style_rl.main_seg import real_test_prompt_list
-from datasets import load_dataset
+from datasets import load_dataset,Dataset
 
 parser=argparse.ArgumentParser()
 
@@ -28,7 +28,7 @@ parser.add_argument("--size",type=int,default=512)
 
 @torch.no_grad()
 def main(args):
-    ir_model=RM.load("ImageReward-v1.0")
+    #ir_model=RM.load("ImageReward-v1.0")
         
         
     clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
@@ -60,7 +60,7 @@ def main(args):
     text_score_list=[]
     image_score_list=[]
     image_score_background_list=[]
-    ir_score_list=[]
+    #ir_score_list=[]
     dino_score_list=[]
 
 
@@ -96,20 +96,20 @@ def main(args):
 
         [_,text_score,__]=logits_per_text
         [_,image_score,image_score_background]=image_similarities
-        ir_score=ir_model.score(prompt,augmented_image)
+        #ir_score=ir_model.score(prompt,augmented_image)
         dino_score=dino_metric.get_scores(image, [augmented_image])
 
         text_score_list.append(text_score.detach().cpu().numpy())
         image_score_list.append(image_score)
         image_score_background_list.append(image_score_background)
-        ir_score_list.append(ir_score)
+        #ir_score_list.append(ir_score)
         dino_score_list.append(dino_score)
 
     accelerator.log({
         "text_score_list":np.mean(text_score_list),
         "image_score_list":np.mean(image_score_list),
         "image_score_background_list":np.mean(image_score_background_list),
-        "ir_score_list":np.mean(ir_score_list),
+        #"ir_score_list":np.mean(ir_score_list),
         "dino_score_list":np.mean(dino_score_list)
     })
 
