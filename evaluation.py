@@ -12,7 +12,7 @@ from transformers import AutoProcessor, CLIPModel
 #import ImageReward as RM
 from style_rl.image_utils import concat_images_horizontally
 from style_rl.eval_helpers import DinoMetric
-from style_rl.main_seg import real_test_prompt_list
+from style_rl.prompt_list import real_test_prompt_list
 from datasets import load_dataset,Dataset
 
 parser=argparse.ArgumentParser()
