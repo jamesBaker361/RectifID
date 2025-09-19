@@ -80,15 +80,15 @@ def main(args):
         accelerator.log({
             f"image_{k}":wandb.Image(concat)
         })
+        with torch.no_grad():
+            inputs = processor(
+                    text=[prompt], images=[image,augmented_image,background_image], return_tensors="pt", padding=True
+            )
 
-        inputs = processor(
-                text=[prompt], images=[image,augmented_image,background_image], return_tensors="pt", padding=True
-        )
-
-        outputs = clip_model(**inputs)
-        image_embeds=outputs.image_embeds
-        text_embeds=outputs.text_embeds
-        logits_per_text=torch.matmul(text_embeds, image_embeds.t())[0]
+            outputs = clip_model(**inputs)
+            image_embeds=outputs.image_embeds.detach().cpu()
+            text_embeds=outputs.text_embeds.detach().cpu()
+            logits_per_text=torch.matmul(text_embeds, image_embeds.t())[0]
         #accelerator.print("logits",logits_per_text.size())
 
         image_similarities=torch.matmul(image_embeds,image_embeds.t()).numpy()[0]
