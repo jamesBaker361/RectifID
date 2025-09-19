@@ -26,7 +26,6 @@ parser.add_argument("--limit",type=int,default=-1)
 parser.add_argument("--size",type=int,default=512)
 
 
-@torch.no_grad()
 def main(args):
     #ir_model=RM.load("ImageReward-v1.0")
         
