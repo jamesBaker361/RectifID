@@ -119,7 +119,7 @@ class PersonRFlow:
             return self._forward(self.pipe, prompt=prompt, height=self.size, width=self.size, ip_adapter_image=self.cropped_image, num_inference_steps=num_steps,
                 guidance_scale=self.guidance_scale, latents=latents0, output_type='pt', return_dict=False, callback_on_step_end=callback)[0][0]
     
-    def generate(self, prompt, seed, out, num_iterations=50, num_steps=4, verbose=True, guidance=1.)->Image.Image:
+    def generate(self, prompt, seed, num_iterations=50, num_steps=4, verbose=True, guidance=1.)->Image.Image:
         if self.attribute is not None:
             idx = np.argmax([a['region']['w'] * a['region']['h'] for a in self.attribute])
             if self.attribute[idx]['dominant_gender'] == 'Man':

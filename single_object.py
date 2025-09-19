@@ -110,7 +110,7 @@ class ObjectRFlow:
             return self._forward(self.pipe, prompt=prompt, height=self.size, width=self.size, ip_adapter_image=self.cropped_image, num_inference_steps=num_steps,
                 guidance_scale=self.guidance_scale, latents=latents0, output_type='pt', return_dict=False, callback_on_step_end=callback)[0][0]
     
-    def generate(self, prompt, seed, out, num_iterations=50, num_steps=4, verbose=True, guidance=1.)->Image.Image:
+    def generate(self, prompt, seed, num_iterations=50, num_steps=4, verbose=True, guidance=1.)->Image.Image:
         generator = torch.manual_seed(seed)
         latent_size = int(self.size // 8)
         latents = nn.Parameter(randn_tensor((num_steps, 4, latent_size, latent_size), generator=generator, device=self.pipe._execution_device, dtype=self.pipe.text_encoder.dtype))
