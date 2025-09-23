@@ -24,6 +24,7 @@ parser.add_argument("--num_inference_steps",type=int,default=20)
 parser.add_argument("--project_name",type=str,default="baseline")
 parser.add_argument("--limit",type=int,default=-1)
 parser.add_argument("--size",type=int,default=512)
+parser.add_argument("--object",type=str, default="person")
 
 
 def main(args):
@@ -71,7 +72,11 @@ def main(args):
         background_image=background_dict[prompt]
         image=row["image"]
 
-        model_rflow.prepare(image,"person")
+        object=args.object
+        if "object" in row:
+            object=row["object"]
+
+        model_rflow.prepare(image,object)
         augmented_image=model_rflow.generate(prompt,123,verbose=False)
 
 
