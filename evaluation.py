@@ -25,6 +25,7 @@ parser.add_argument("--project_name",type=str,default="baseline")
 parser.add_argument("--limit",type=int,default=-1)
 parser.add_argument("--size",type=int,default=512)
 parser.add_argument("--object",type=str, default="person")
+parser.add_argument("--dest_dataset",type=str,default="jlbaker361/rectifid")
 
 
 def main(args):
