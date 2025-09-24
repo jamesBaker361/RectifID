@@ -50,6 +50,15 @@ def main(args):
     elif args.model=="object":
         model_clsss=ObjectRFlow
 
+    output_dict={
+        "image":[],
+        "augmented_image":[],
+        "text_score":[],
+        "image_score":[],
+        "dino_score":[],
+        "prompt":[]
+    }
+
     model_rflow=model_class('PeRFlow',123,device,torch_dtype,args.size)
 
     data=load_dataset(args.src_dataset, split="train")
@@ -109,6 +118,13 @@ def main(args):
         #ir_score_list.append(ir_score)
         dino_score_list.append(dino_score)
 
+        output_dict["augmented_image"].append(augmented_image)
+        output_dict["image"].append(image)
+        output_dict["dino_score"].append(dino_score)
+        output_dict["image_score"].append(image_score)
+        output_dict["text_score"].append(text_score)
+        output_dict["prompt"].append(prompt)
+
     accelerator.log({
         "text_score_list":np.mean(text_score_list),
         "image_score_list":np.mean(image_score_list),
@@ -116,6 +132,8 @@ def main(args):
         #"ir_score_list":np.mean(ir_score_list),
         "dino_score_list":np.mean(dino_score_list)
     })
+
+    Dataset.from_dict(output_dict).push_to_hub(args.dest_dataset)
 
 
 
