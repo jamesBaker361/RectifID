@@ -49,7 +49,7 @@ def main(args):
     if args.model=="person":
         model_class=PersonRFlow
     elif args.model=="object":
-        model_clsss=ObjectRFlow
+        model_class=ObjectRFlow
 
     output_dict={
         "image":[],
